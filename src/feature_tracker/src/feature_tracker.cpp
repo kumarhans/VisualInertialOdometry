@@ -193,7 +193,7 @@ map<int, vector<pair<int, Eigen::Matrix<double, 7, 1>>>> FeatureTracker::trackIm
             ids.push_back(n_id++);
             track_cnt.push_back(1);
         }
-        printf("feature cnt after add %d\n", (int)ids.size());
+        //printf("feature cnt after add %d\n", (int)ids.size());
     }
 
     cur_un_pts = undistortedPts(cur_pts, m_camera[0]);

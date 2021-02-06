@@ -4,7 +4,6 @@
 #include <sensor_msgs/PointCloud.h>
 #include <sensor_msgs/Imu.h>
 #include <std_msgs/Bool.h>
-#include <std_msgs/Float64.h>
 #include <cv_bridge/cv_bridge.h>
 #include <message_filters/subscriber.h>
 #include "visualization.h"
@@ -40,8 +39,15 @@ FeatureTracker featureTracker3;
 FeatureTracker featureTracker12;
 FeatureTracker featureTracker23;
 
+bool first = false;
+
 double currPitch = 0.0;
-double currPhase = 0.0;
+double startTime = 0.0;
+double startOffest = 4.0;
+double gaitCycle = .33;
+double prevPitch = 0.0;
+
+
 
 
 
@@ -110,7 +116,7 @@ void pubTrackImage(const cv::Mat &imgTrack, const double t, int section)
     }
 
     std_msgs::Header header;
-    header.frame_id = std::to_string(section);
+    header.frame_id = "world";
     header.stamp = ros::Time(t);
     sensor_msgs::ImagePtr imgTrackMsg = cv_bridge::CvImage(header, "bgr8", imgTrack).toImageMsg();
     pub_image_track.publish(imgTrackMsg);
@@ -268,14 +274,12 @@ void img0_callback(const sensor_msgs::ImageConstPtr &img_msg)
     m_buf.unlock();
 }
 
-
 void img1_callback(const sensor_msgs::ImageConstPtr &img_msg)
 {
     m_buf.lock();
     img1_buf.push(img_msg);
     m_buf.unlock();
 }
-
 
 cv::Mat getImageFromMsg(const sensor_msgs::ImageConstPtr &img_msg)
 {
@@ -306,46 +310,55 @@ void feature_frame_push(double t, const cv::Mat &_img, const cv::Mat &_img1)
     map<int, vector<pair<int, Eigen::Matrix<double, 7, 1>>>> featureFrame;
     TicToc featureTrackerTime;
     double pitch = currPitch;
-    double phase = currPhase;
-    cv::Mat imgTrack;
+    
 
- 
-    cout << "currPITCHHHH" << pitch << endl;
+    cv::Mat imgTrack;
+    if (!first){
+        startTime = t;
+        first = true;
+    }
+    
+    cout << currPitch << endl;
+    cout << t - startTime << endl;
+    
+
+    bool init;
+    if (startOffest < t - startTime){
+        init = true;
+    } else {
+        init = false;        
+    }
+    cout << init << endl;
 
     if(_img1.empty())
         featureFrame = featureTracker1.trackImage(t, _img);
     else{
-        if (pitch < -.38){  //magic number is .43  or .23 or .4
+        if (abs(currPitch) < 1.4 && prevPitch < 0 && init){
             if (img0_down.empty()){
                 img0_down = _img;
                 img1_down = _img1;
                 //img_match(4);
-                 
             }
-            cout << "pitch:   " << pitch << "  phase  " << phase << endl;
 
             pubStereoFeatures(featureTracker1.trackImage(t, _img, _img1),t, 1);
             pubTrackImage(featureTracker1.getTrackImage(), t, 1);
             
-        } else if (-.05 < pitch && pitch < .05){
+        } else if (!init){
             if (img0_mid.empty()){
                 img0_mid = _img;
                 img1_mid = _img1;
-                cout << "pitch:   " << pitch << "  phase  " << phase << endl;
             }
-            cout << "pitch:   " << pitch << "  phase  " << phase << endl;
             pubStereoFeatures(featureTracker2.trackImage(t, _img, _img1),t, 2);
-            //pubTrackImage(featureTracker2.getTrackImage(), t, 2);
+            pubTrackImage(featureTracker2.getTrackImage(), t, 2);
             
-        } else if (pitch > .38){
+        } else if (abs(currPitch) < 1.4 && prevPitch > 0 && init){
             if (img0_up.empty()){
                 img0_up = _img;
                 img1_up = _img1;
-                cout << "pitch:   " << pitch << "  phase  " << phase << endl;
                 //img_match(5);
                 
             }
-            cout << "pitch:   " << pitch << "  phase  " << phase << endl;
+
             pubStereoFeatures(featureTracker3.trackImage(t, _img, _img1),t, 3);
             pubTrackImage(featureTracker3.getTrackImage(), t, 3);
             
@@ -355,7 +368,7 @@ void feature_frame_push(double t, const cv::Mat &_img, const cv::Mat &_img1)
         }
     } 
         
-
+    prevPitch = currPitch;
     
 
 }
@@ -401,37 +414,7 @@ void sync_process()
             m_buf.unlock();
             if(!image0.empty())
                 feature_frame_push(time, image0, image1);
-        } 
-        // if (STEREO)
-        // {
-        //     cv::Mat image0, image1;
-        //     std_msgs::Header header;
-        //     double time;
-        //     m_buf.lock();
-        //     if (img0_buf.size() > 2 && img1_buf.size() > 2)
-        //     {
-                 
-        //         image0 = .15*getImageFromMsg(img0_buf.front());
-        //         img0_buf.pop();
-        //         time = img0_buf.front()->header.stamp.toSec();
-        //         header = img0_buf.front()->header;
-        //         image0 += .7*getImageFromMsg(img0_buf.front());
-        //         img0_buf.pop();
-        //         image0 += .15*getImageFromMsg(img0_buf.front());
-        //         img0_buf.pop();
-
-        //         image1 = .15*getImageFromMsg(img1_buf.front());
-        //         img1_buf.pop();
-        //         image1 += .7*getImageFromMsg(img1_buf.front());
-        //         img1_buf.pop();
-        //         image1 += .15*getImageFromMsg(img1_buf.front());
-        //         img1_buf.pop();
-                
-        //     }
-        //     m_buf.unlock();
-        //     if(!image0.empty())
-        //         feature_frame_push(time, image0, image1);
-        // }
+        }
         else
         {
             cv::Mat image;
@@ -465,9 +448,21 @@ void gazCallback(const gazebo_msgs::LinkStates &msgs){
     currPitch = pitch;
 }
 
-void phaseCallback(const std_msgs::Float64 &msgs){
-    currPhase = msgs.data;
+void imuCallback(const sensor_msgs::Imu &imu_msg){
+
+    geometry_msgs::Vector3 aV = imu_msg.angular_velocity;
+    geometry_msgs::Vector3 lA = imu_msg.linear_acceleration;
+    if (aV.x > 0 && currPitch <0){
+        cout << "down Frame" << endl;
+    }
+
+    if (aV.x < 0 && currPitch > 0){
+        cout << "up Frame" << endl;
+    }
+
+    currPitch = aV.x;
 }
+
 
 
 
@@ -510,7 +505,8 @@ int main(int argc, char **argv)
     ros::Subscriber sub_img0 = n.subscribe(IMAGE0_TOPIC, 100, img0_callback);
     ros::Subscriber sub_img1 = n.subscribe(IMAGE1_TOPIC, 100, img1_callback);
     ros::Subscriber gazSUB = n.subscribe("/gazebo/link_states", 1000, gazCallback);
-    ros::Subscriber phaseSUB = n.subscribe("/mobile_robot/phase", 1000, phaseCallback); 
+    ros::Subscriber imuSub = n.subscribe("/camera/imu", 1000, imuCallback);
+
 
     pub_image_track = n.advertise<sensor_msgs::Image>("feature_img",1000);
 
