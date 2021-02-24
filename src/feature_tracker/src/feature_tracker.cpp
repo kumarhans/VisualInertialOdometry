@@ -10,6 +10,7 @@
  *******************************************************/
 
 #include "feature_tracker.h"
+ 
 
 bool FeatureTracker::inBorder(const cv::Point2f &pt)
 {
@@ -45,11 +46,12 @@ void reduceVector(vector<int> &v, vector<uchar> status)
     v.resize(j);
 }
 
-FeatureTracker::FeatureTracker()
+FeatureTracker::FeatureTracker(int n)
 {
     stereo_cam = 0;
     n_id = 0;
     hasPrediction = false;
+    num = n; 
 }
 
 void FeatureTracker::setMask()
@@ -99,6 +101,7 @@ map<int, vector<pair<int, Eigen::Matrix<double, 7, 1>>>> FeatureTracker::trackIm
     row = cur_img.rows;
     col = cur_img.cols;
     cv::Mat rightImg = _img1;
+ 
     /*
     {
         cv::Ptr<cv::CLAHE> clahe = cv::createCLAHE(3.0, cv::Size(8, 8));
@@ -160,6 +163,12 @@ map<int, vector<pair<int, Eigen::Matrix<double, 7, 1>>>> FeatureTracker::trackIm
         ROS_DEBUG("temporal optical flow costs: %fms", t_o.toc());
         //printf("track cnt %d\n", (int)ids.size());
     }
+
+    trackedNum  =(int)cur_pts.size();
+
+    
+    
+     
 
     for (auto &n : track_cnt)
         n++;
@@ -466,7 +475,14 @@ void FeatureTracker::drawTrack(const cv::Mat &imLeft, const cv::Mat &imRight,
         {
             cv::Point2f rightPt = curRightPts[i];
             rightPt.x += cols;
-            cv::circle(imTrack, rightPt, 2, cv::Scalar(0, 255, 0), 2);
+            if (num == 1){
+                cv::circle(imTrack, rightPt, 2, cv::Scalar(255,234,5), 2);
+            } else if (num == 2){
+                cv::circle(imTrack, rightPt, 2, cv::Scalar(0,204,255), 2);
+            } else {
+                cv::circle(imTrack, rightPt, 2, cv::Scalar(179,102,255), 2);
+            }
+            
             //cv::Point2f leftPt = curLeftPtsTrackRight[i];
             //cv::line(imTrack, leftPt, rightPt, cv::Scalar(0, 255, 0), 1, 8, 0);
         }

@@ -13,6 +13,7 @@
 #include <std_msgs/Header.h>
 #include <std_msgs/Float32.h>
 #include <std_msgs/Bool.h>
+#include <std_msgs/Int32.h>
 #include <sensor_msgs/Imu.h>
 #include <sensor_msgs/PointCloud.h>
 #include <sensor_msgs/Image.h>
@@ -43,3 +44,5 @@ void registerPub(ros::NodeHandle &n);
 void pubLatestOdometry(const Eigen::Vector3d &P, const Eigen::Quaterniond &Q, const Eigen::Vector3d &V, double t);
 
 void pubTrackImage(const cv::Mat &imgTrack, const double t);
+
+void pubTrackCount(const int count);

@@ -31,14 +31,14 @@ using namespace cv;
 #define SHOW_UNDISTORTION 0
 
 
-ros::Publisher pub_image_track, feature_pub, pub_image_debug;
+ros::Publisher pub_image_track1, pub_image_track2, pub_image_track3, feature_pub, pub_image_debug, pub_track;
 
-FeatureTracker featureTracker1;
-FeatureTracker featureTracker2;
-FeatureTracker featureTracker3;
+FeatureTracker featureTracker1(1);
+FeatureTracker featureTracker2(2);
+FeatureTracker featureTracker3(3);
 
-FeatureTracker featureTracker12;
-FeatureTracker featureTracker23;
+FeatureTracker featureTracker4(4);
+FeatureTracker featureTracker5(5);
 
 double currPitch = 0.0;
 double currPhase = 0.0;
@@ -103,7 +103,7 @@ void getStereoPairs(const cv::Mat &imLeftprev, const cv::Mat &imRightprev,
 
 
 
-void pubTrackImage(const cv::Mat &imgTrack, const double t, int section)
+void pubTrackImage1(const cv::Mat &imgTrack, const double t, int section)
 {
     if (section == -1){
         return;
@@ -113,7 +113,35 @@ void pubTrackImage(const cv::Mat &imgTrack, const double t, int section)
     header.frame_id = std::to_string(section);
     header.stamp = ros::Time(t);
     sensor_msgs::ImagePtr imgTrackMsg = cv_bridge::CvImage(header, "bgr8", imgTrack).toImageMsg();
-    pub_image_track.publish(imgTrackMsg);
+    pub_image_track1.publish(imgTrackMsg);
+
+}
+
+void pubTrackImage2(const cv::Mat &imgTrack, const double t, int section)
+{
+    if (section == -1){
+        return;
+    }
+
+    std_msgs::Header header;
+    header.frame_id = std::to_string(section);
+    header.stamp = ros::Time(t);
+    sensor_msgs::ImagePtr imgTrackMsg = cv_bridge::CvImage(header, "bgr8", imgTrack).toImageMsg();
+    pub_image_track2.publish(imgTrackMsg);
+
+}
+
+void pubTrackImage3(const cv::Mat &imgTrack, const double t, int section)
+{
+    if (section == -1){
+        return;
+    }
+
+    std_msgs::Header header;
+    header.frame_id = std::to_string(section);
+    header.stamp = ros::Time(t);
+    sensor_msgs::ImagePtr imgTrackMsg = cv_bridge::CvImage(header, "bgr8", imgTrack).toImageMsg();
+    pub_image_track3.publish(imgTrackMsg);
 
 }
 
@@ -146,6 +174,12 @@ void pubStereoFeatures(map<int, vector<pair<int, Eigen::Matrix<double, 7, 1>>>> 
 
     feature_pub.publish(feature_msg_ptr);
 
+}
+
+void pubTrackCount(const int count){
+    std_msgs::Int32 msg;
+    msg.data = count;
+    pub_track.publish(msg); 
 }
 
 // void img_match(int section)
@@ -310,12 +344,12 @@ void feature_frame_push(double t, const cv::Mat &_img, const cv::Mat &_img1)
     cv::Mat imgTrack;
 
  
-    cout << "currPITCHHHH" << pitch << endl;
+    cout << "currPhase" << phase << endl;
 
     if(_img1.empty())
         featureFrame = featureTracker1.trackImage(t, _img);
     else{
-        if (pitch < -.38){  //magic number is .43  or .23 or .4
+        if (pitch < -.12){  //magic number is .43  or .23 or .4
             if (img0_down.empty()){
                 img0_down = _img;
                 img1_down = _img1;
@@ -323,11 +357,11 @@ void feature_frame_push(double t, const cv::Mat &_img, const cv::Mat &_img1)
                  
             }
             cout << "pitch:   " << pitch << "  phase  " << phase << endl;
-
+            pubTrackCount(featureTracker1.trackedNum);
             pubStereoFeatures(featureTracker1.trackImage(t, _img, _img1),t, 1);
-            pubTrackImage(featureTracker1.getTrackImage(), t, 1);
+            pubTrackImage1(featureTracker1.getTrackImage(), t, 1);
             
-        } else if (-.05 < pitch && pitch < .05){
+        } else if (-.01 < pitch  && pitch < .03){
             if (img0_mid.empty()){
                 img0_mid = _img;
                 img1_mid = _img1;
@@ -335,9 +369,9 @@ void feature_frame_push(double t, const cv::Mat &_img, const cv::Mat &_img1)
             }
             cout << "pitch:   " << pitch << "  phase  " << phase << endl;
             pubStereoFeatures(featureTracker2.trackImage(t, _img, _img1),t, 2);
-            //pubTrackImage(featureTracker2.getTrackImage(), t, 2);
+            pubTrackImage2(featureTracker2.getTrackImage(), t, 2);
             
-        } else if (pitch > .38){
+        } else if (pitch > .12){
             if (img0_up.empty()){
                 img0_up = _img;
                 img1_up = _img1;
@@ -347,11 +381,38 @@ void feature_frame_push(double t, const cv::Mat &_img, const cv::Mat &_img1)
             }
             cout << "pitch:   " << pitch << "  phase  " << phase << endl;
             pubStereoFeatures(featureTracker3.trackImage(t, _img, _img1),t, 3);
-            pubTrackImage(featureTracker3.getTrackImage(), t, 3);
+            pubTrackImage3(featureTracker3.getTrackImage(), t, 3);
             
-        } else{
+        }
+        
+        //  else if (-.55 < phase  && phase < -.45){
+        //     if (img0_up.empty()){
+        //         img0_up = _img;
+        //         img1_up = _img1;
+        //         cout << "pitch:   " << pitch << "  phase  " << phase << endl;
+        //         //img_match(5);
+                
+        //     }
+        //     cout << "pitch:   " << pitch << "  phase  " << phase << endl;
+        //     pubStereoFeatures(featureTracker4.trackImage(t, _img, _img1),t, 4);
+        //     //pubTrackImage(featureTracker4.getTrackImage(), t, 4);
+            
+        // } else if (.45 < phase  && phase < .55){
+        //     if (img0_up.empty()){
+        //         img0_up = _img;
+        //         img1_up = _img1;
+        //         cout << "pitch:   " << pitch << "  phase  " << phase << endl;
+        //         //img_match(5);
+                
+        //     }
+        //     cout << "pitch:   " << pitch << "  phase  " << phase << endl;
+        //     pubStereoFeatures(featureTracker5.trackImage(t, _img, _img1),t, 5);
+        //     //pubTrackImage(featureTracker5.getTrackImage(), t, 5);
+            
+        // }
+         else{
             pubStereoFeatures(featureFrame, t, -1);
-            pubTrackImage(featureTracker1.getTrackImage(), t, -1);
+            pubTrackImage1(featureTracker1.getTrackImage(), t, -1);
         }
     } 
         
@@ -465,6 +526,16 @@ void gazCallback(const gazebo_msgs::LinkStates &msgs){
     currPitch = pitch;
 }
 
+void gtCallback(const geometry_msgs::PoseStamped::ConstPtr& msg){
+    tf::Quaternion q(msg->pose.orientation.x, msg->pose.orientation.y,msg->pose.orientation.z,msg->pose.orientation.w);
+    tf::Matrix3x3 m(q);
+    double roll, pitch, yaw;
+    m.getRPY(roll, pitch, yaw);
+    currPitch = roll;
+    cout << currPitch << endl;
+}
+
+
 void phaseCallback(const std_msgs::Float64 &msgs){
     currPhase = msgs.data;
 }
@@ -502,18 +573,21 @@ int main(int argc, char **argv)
     featureTracker1.readIntrinsicParameter(CAM_NAMES);
     featureTracker2.readIntrinsicParameter(CAM_NAMES);
     featureTracker3.readIntrinsicParameter(CAM_NAMES);
-
-    featureTracker12.readIntrinsicParameter(CAM_NAMES);
-    featureTracker23.readIntrinsicParameter(CAM_NAMES);
+    featureTracker4.readIntrinsicParameter(CAM_NAMES);
+    featureTracker5.readIntrinsicParameter(CAM_NAMES);
 
    
     ros::Subscriber sub_img0 = n.subscribe(IMAGE0_TOPIC, 100, img0_callback);
     ros::Subscriber sub_img1 = n.subscribe(IMAGE1_TOPIC, 100, img1_callback);
     ros::Subscriber gazSUB = n.subscribe("/gazebo/link_states", 1000, gazCallback);
     ros::Subscriber phaseSUB = n.subscribe("/mobile_robot/phase", 1000, phaseCallback); 
+    ros::Subscriber gtSUB = n.subscribe("/mocap_node/Robot_1/pose", 1000, gtCallback);
 
-    pub_image_track = n.advertise<sensor_msgs::Image>("feature_img",1000);
-
+    pub_image_track1 = n.advertise<sensor_msgs::Image>("feature_img1",1000);
+    pub_image_track2 = n.advertise<sensor_msgs::Image>("feature_img2",1000);
+    pub_image_track3 = n.advertise<sensor_msgs::Image>("feature_img3",1000);
+    
+    pub_track = n.advertise<std_msgs::Int32>("/track_count1", 1000);
     pub_image_debug = n.advertise<sensor_msgs::Image>("debugging_img",1000);
 
     feature_pub = n.advertise<feature_tracker::CameraMeasurement>("/features", 3);

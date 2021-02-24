@@ -68,16 +68,18 @@ add_executable(feature_tracker
     src/feature_tracker_node.cpp
     src/parameters.cpp
     src/feature_tracker.cpp
+ 
     )
 
 target_link_libraries(feature_tracker ${catkin_LIBRARIES} ${OpenCV_LIBS} gtsam)
 
 
-add_executable(feature_tracker_time
-    src/feature_tracker_node_time.cpp
-    src/parameters.cpp
-    src/feature_tracker.cpp
-    )
+#add_executable(feature_tracker_time
+#    src/feature_tracker_node_time.cpp
+#    src/parameters.cpp
+#    src/feature_tracker.cpp
+#    
+#    )
 
-target_link_libraries(feature_tracker_time ${catkin_LIBRARIES} ${OpenCV_LIBS} gtsam)
+#target_link_libraries(feature_tracker_time ${catkin_LIBRARIES} ${OpenCV_LIBS} gtsam)
 

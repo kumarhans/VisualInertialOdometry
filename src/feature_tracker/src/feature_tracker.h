@@ -36,9 +36,10 @@ void reduceVector(vector<int> &v, vector<uchar> status);
 class FeatureTracker
 {
 public:
-    FeatureTracker();
+    FeatureTracker(int n);
     map<int, vector<pair<int, Eigen::Matrix<double, 7, 1>>>> trackImage(double _cur_time, const cv::Mat &_img, const cv::Mat &_img1 = cv::Mat());
     void setMask();
+    
     void readIntrinsicParameter(const vector<string> &calib_file);
     void showUndistortion(const string &name);
     void rejectWithF();
@@ -64,6 +65,7 @@ public:
                                    vector<cv::Point2f> &curRightPts);
 
     int row, col;
+    int num;
     cv::Mat imTrack;
     cv::Mat mask;
     cv::Mat fisheye_mask;
@@ -85,4 +87,5 @@ public:
     bool stereo_cam;
     int n_id;
     bool hasPrediction;
+    int trackedNum;
 };
